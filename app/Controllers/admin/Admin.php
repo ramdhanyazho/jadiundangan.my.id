@@ -723,43 +723,99 @@ Pembayaran Anda #'.$invoice.' dengan domain *'.$domain.'* Berhasil dikonfirmasi 
     
     
     public function upload_theme(){
+        $session = session();
         $view = $this->request->getFile('viewfile');
         $asset = $this->request->getFile('assetfile');
-        $namafolder = $this->request->getPost('namatema');
-        $pathassets = 'assets/themes/'.$namafolder;
-        $pathview = ROOTPATH.'app/Views/undangan/themes/';
-        $namaasset= $asset->getName();
-        helper('filesystem');
-        //cek folder e
-        if(!file_exists($pathassets)){
-            $create = mkdir('assets/themes/'.$namafolder, 0777,true);
-            $view->move($pathview, $namafolder.'.php');
-            
+        $namafolder = trim((string) $this->request->getPost('namatema'));
 
-        $asset->move('assets/themes/', $namafolder.'.zip');
-        $zip = new ZipArchive;
-             $res = $zip->open('assets/themes/'.$namafolder.'.zip');
-             if ($res === TRUE) {
-
-              // Unzip path
-              //$extractpath = 'assets/themes';
-              $extractpath = 'assets/themes/'.$namafolder;
-
-              // Extract file
-              $zip->extractTo($extractpath);
-              $zip->close();
-              //rename($extractpath.'/, 'assets/themes/'.$namafolder);
-              unlink('assets/themes/'.$namafolder.'.zip');
-              $data['nama_theme'] = $this->request->getPost('namatema');
-             $data['kode_theme'] =$this->request->getPost('kodetema');
-           $save = $this->AdminModel->save_themes($data);
-           $session = session();
-            $session->setFlashdata("success", "Tema Berhail diupload");
-        return redirect()->to(base_url('admin/tema'));
+        if ($namafolder === '' || $view === null || !$view->isValid() || $asset === null || !$asset->isValid()) {
+            $session->setFlashdata("error", "Data tema tidak lengkap atau file tidak valid.");
+            return redirect()->to(base_url('admin/tema'));
         }
 
-     }   
+        if (!class_exists('ZipArchive')) {
+            $session->setFlashdata("error", "Ekstensi ZipArchive pada server belum aktif sehingga file tidak dapat diekstrak.");
+            return redirect()->to(base_url('admin/tema'));
+        }
 
+        $pathassets = FCPATH.'assets/themes/'.$namafolder;
+        $pathview = APPPATH.'Views/undangan/themes/';
+        $viewTarget = $pathview.$namafolder.'.php';
+
+        helper('filesystem');
+
+        if (is_dir($pathassets)) {
+            delete_files($pathassets, true);
+        } elseif (!mkdir($pathassets, 0777, true)) {
+            $session->setFlashdata("error", "Folder tujuan tidak dapat dibuat.");
+            return redirect()->to(base_url('admin/tema'));        
+    }
+
+            if (is_file($viewTarget)) {
+            unlink($viewTarget);
+        }
+            try {
+            $view->move($pathview, $namafolder.'.php');
+        } catch (\Throwable $th) {
+            $session->setFlashdata("error", "File view tema gagal disimpan.");
+            return redirect()->to(base_url('admin/tema'));
+        }
+
+        $tempDir = WRITEPATH.'uploads';
+        $tempName = $asset->getRandomName();
+
+        try {
+            $asset->move($tempDir, $tempName);
+        } catch (\Throwable $th) {
+            if (is_file($viewTarget)) {
+                unlink($viewTarget);
+            }
+            $session->setFlashdata("error", "File assets tema gagal diunggah.");
+            return redirect()->to(base_url('admin/tema'));
+        }
+
+        $zipPath = $tempDir.DIRECTORY_SEPARATOR.$tempName;
+        $zip = new ZipArchive();
+        $zipResult = $zip->open($zipPath);
+
+        if ($zipResult === true) {
+            $zip->extractTo($pathassets);
+            $zip->close();
+            unlink($zipPath);
+        } else {
+            unlink($zipPath);
+            if (is_dir($pathassets)) {
+                delete_files($pathassets, true);
+                if (count(array_diff(scandir($pathassets), ['.', '..'])) === 0) {
+                    rmdir($pathassets);
+                }
+            }
+            if (is_file($viewTarget)) {
+                unlink($viewTarget);
+            }
+            $session->setFlashdata("error", "File assets tidak dapat dibuka.");
+            return redirect()->to(base_url('admin/tema'));
+        }
+
+        $data['nama_theme'] = $namafolder;
+        $data['kode_theme'] = $this->request->getPost('kodetema');
+
+        if (!$this->AdminModel->save_themes($data)) {
+            if (is_dir($pathassets)) {
+                delete_files($pathassets, true);
+                if (count(array_diff(scandir($pathassets), ['.', '..'])) === 0) {
+                    rmdir($pathassets);
+                }
+            }
+            if (is_file($viewTarget)) {
+                unlink($viewTarget);
+            }
+            $session->setFlashdata("error", "Tema gagal disimpan ke database.");
+            return redirect()->to(base_url('admin/tema'));
+        }
+
+        $session->setFlashdata("success", "Tema Berhail diupload");
+        return redirect()->to(base_url('admin/tema'));
     }
     public function delete_theme()
 	{
