@@ -1,0 +1,13 @@
+SYARAT SERVER HOSTING
+1. PHP versi 7.4+
+2. Ektensi curl
+3. Ektensi pdo_mysql
+4. Ekstensi OpenSSL / mode https
+5. Ekstensi intl
+6. Ekstensi mbstring
+7. Ekstensi tokenizer
+8. Ekstensi XML
+9. Ekstensi Zip 
+10. Ekstensi GD
+11. Ekstensi Fileinfo
+* Semua extensi diatas aktif otomatis di shared hosting domainesia, silakan daftar di https://bit.ly/mcprojectid. Voucher diskon 30%, kode voucher: MCP

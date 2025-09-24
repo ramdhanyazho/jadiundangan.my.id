@@ -1,0 +1,27 @@
+# Composer dependencies
+/vendor/
+composer.lock
+
+# CI writable dirs
+/writable/cache/
+/writable/logs/
+/writable/session/
+/writable/debugbar/
+
+# Environment config
+.env
+
+# System files
+*.bak
+*.tmp
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/
+.idea/
+
