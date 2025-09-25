@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <style>
+      .line { fill: none; stroke: #e8d9c5; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .dot { fill: #e8d9c5; opacity: .55; }
+    </style>
+    <!-- Star & polygon tile -->
+    <g id="tile">
+      <!-- 8-point star (two squares) -->
+      <path class="line" d="M100 40 L140 60 L160 100 L140 140 L100 160 L60 140 L40 100 L60 60 Z" />
+      <path class="line" d="M100 20 L180 100 L100 180 L20 100 Z" opacity=".6"/>
+      <!-- Inner rosette -->
+      <circle cx="100" cy="100" r="22" fill="none" stroke="#e8d9c5" stroke-width="2"/>
+      <circle cx="100" cy="100" r="4" class="dot"/>
+      <!-- Connecting diagonals -->
+      <path class="line" d="M60 60 L140 140 M140 60 L60 140" opacity=".5"/>
+    </g>
+    <!-- Create a seamless pattern by offset tiling -->
+    <pattern id="arabicGirih" patternUnits="userSpaceOnUse" width="200" height="200">
+      <rect width="200" height="200" fill="#b68a68"/>
+      <use href="#tile"/>
+      <use href="#tile" x="200"/>
+      <use href="#tile" y="200"/>
+      <use href="#tile" x="200" y="200"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#arabicGirih)"/>
+</svg>

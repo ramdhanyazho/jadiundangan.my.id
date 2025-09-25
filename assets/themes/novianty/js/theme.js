@@ -1,4 +1,4 @@
-// update baru
+// theme.js — update perbaikan parsing tanggal & countdown
 (function ($) {
   'use strict';
 
@@ -37,9 +37,8 @@
   }
 
   function playMusic() {
-    if (!music) {
-      return;
-    }
+    if (!music) return;
+
     const playPromise = music.play();
     if (playPromise && typeof playPromise.then === 'function') {
       playPromise.then(function () {
@@ -56,18 +55,16 @@
   }
 
   function pauseMusic() {
-    if (!music) {
-      return;
-    }
+    if (!music) return;
+
     music.pause();
     playing = false;
     toggleMusicState();
   }
 
   function toggleMusicState() {
-    if (!musicControl) {
-      return;
-    }
+    if (!musicControl) return;
+
     if (playing && !music.paused) {
       musicControl.classList.add('is-playing');
     } else {
@@ -76,9 +73,7 @@
   }
 
   function initMusicControl() {
-    if (!musicControl || !music) {
-      return;
-    }
+    if (!musicControl || !music) return;
 
     musicControl.addEventListener('click', function () {
       if (music.paused) {
@@ -99,107 +94,117 @@
     });
   }
 
+  // ---- PERBAIKAN: parsing tanggal strict (hindari warning Moment) ----
   function formatDates() {
-    if (typeof moment === 'undefined') {
-      return;
-    }
+    if (typeof moment === 'undefined') return;
 
     moment.locale('id');
     const formatLong = 'dddd, D MMMM YYYY';
 
-    if (config.tanggalAkad) {
-      const akadMoment = moment(config.tanggalAkad);
-      if (akadMoment.isValid()) {
-        const akadEl = document.getElementById('tanggal-akad');
-        if (akadEl) {
-          akadEl.textContent = akadMoment.format(formatLong);
-        }
-      }
+    // parser strict mendukung beberapa format umum
+    const parseStrict = (val) => {
+      if (!val) return null;
+      const m = moment(val, [
+        'YYYY-MM-DD HH:mm',
+        'YYYY/MM/DD HH:mm',
+        'YYYY-MM-DD',
+        'YYYY/MM/DD',
+        'DD-MM-YYYY',
+        'DD/MM/YYYY'
+      ], true); // strict
+      return m.isValid() ? m : null;
+    };
+
+    // Akad
+    const akadMoment = parseStrict(config.tanggalAkad);
+    if (akadMoment) {
+      const akadEl = document.getElementById('tanggal-akad');
+      if (akadEl) akadEl.textContent = akadMoment.format(formatLong);
     }
 
-    let resepsiMoment = null;
-    if (config.tanggalResepsi) {
-      resepsiMoment = moment(config.tanggalResepsi);
-      if (resepsiMoment.isValid()) {
-        const resepsiEl = document.getElementById('tanggal-resepsi');
-        if (resepsiEl) {
-          resepsiEl.textContent = resepsiMoment.format(formatLong);
-        }
-      } else {
-        resepsiMoment = null;
-      }
+    // Resepsi
+    let resepsiMoment = parseStrict(config.tanggalResepsi);
+    if (resepsiMoment) {
+      const resepsiEl = document.getElementById('tanggal-resepsi');
+      if (resepsiEl) resepsiEl.textContent = resepsiMoment.format(formatLong);
+    } else {
+      resepsiMoment = null;
     }
 
-    if (config.tanggalPernikahan) {
-      const weddingMoment = moment(config.tanggalPernikahan);
-      if (weddingMoment.isValid()) {
-        const pernikahanEl = document.getElementById('tanggal-weddingnya');
-        if (pernikahanEl) {
-          pernikahanEl.textContent = weddingMoment.format(formatLong);
-        }
+    // Pernikahan (dipakai juga untuk short date)
+    const weddingMoment = parseStrict(config.tanggalPernikahan);
+    if (weddingMoment) {
+      const pernikahanEl = document.getElementById('tanggal-weddingnya');
+      if (pernikahanEl) pernikahanEl.textContent = weddingMoment.format(formatLong);
 
-        document.querySelectorAll('.js-date-short').forEach(function (element) {
-          element.textContent = weddingMoment.format('DD.MM.YY');
-        });
+      document.querySelectorAll('.js-date-short').forEach(function (el) {
+        el.textContent = weddingMoment.format('DD.MM.YY');
+      });
 
-        if (!resepsiMoment) {
-          resepsiMoment = weddingMoment;
-        }
-      }
+      if (!resepsiMoment) resepsiMoment = weddingMoment;
     }
-
   }
 
+  // ---- PERBAIKAN: countdown tidak error timer (let + deklarasi sebelum digunakan) ----
   function initCountdown() {
-    if (!config.countdown) {
-      return;
-    }
+    if (!config.countdown) return;
 
-    const targetDate = new Date(config.countdown).getTime();
-    if (Number.isNaN(targetDate)) {
-      return;
-    }
+    // coba parse strict dengan moment jika ada
+    const m = (typeof moment !== 'undefined')
+      ? moment(config.countdown, [
+          'YYYY-MM-DD HH:mm',
+          'YYYY/MM/DD HH:mm',
+          'YYYY-MM-DD',
+          'YYYY/MM/DD'
+        ], true)
+      : null;
+
+    const targetTs = m && m.isValid()
+      ? m.toDate().getTime()
+      : new Date(config.countdown).getTime();
+
+    if (Number.isNaN(targetTs)) return;
 
     const daysEl = document.getElementById('countdown-days');
     const hoursEl = document.getElementById('countdown-hours');
     const minutesEl = document.getElementById('countdown-minutes');
     const secondsEl = document.getElementById('countdown-seconds');
 
+    let timer; // penting: deklarasi sebelum dipakai di tick()
+
     const tick = function () {
-      const now = new Date().getTime();
-      const distance = targetDate - now;
+      const now = Date.now();
+      const distance = targetTs - now;
 
       if (distance <= 0) {
-        clearInterval(timer);
-        if (daysEl) { daysEl.textContent = '00'; }
-        if (hoursEl) { hoursEl.textContent = '00'; }
-        if (minutesEl) { minutesEl.textContent = '00'; }
-        if (secondsEl) { secondsEl.textContent = '00'; }
-        if (countdownExpired) {
-          countdownExpired.textContent = 'Acara telah berlangsung.';
-        }
+        if (typeof timer !== 'undefined') clearInterval(timer);
+        if (daysEl) daysEl.textContent = '00';
+        if (hoursEl) hoursEl.textContent = '00';
+        if (minutesEl) minutesEl.textContent = '00';
+        if (secondsEl) secondsEl.textContent = '00';
+        if (countdownExpired) countdownExpired.textContent = 'Acara telah berlangsung.';
         return;
       }
 
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      const days = Math.floor(distance / 86400000);
+      const hours = Math.floor((distance % 86400000) / 3600000);
+      const minutes = Math.floor((distance % 3600000) / 60000);
+      const seconds = Math.floor((distance % 60000) / 1000);
 
-      if (daysEl) { daysEl.textContent = String(days).padStart(2, '0'); }
-      if (hoursEl) { hoursEl.textContent = String(hours).padStart(2, '0'); }
-      if (minutesEl) { minutesEl.textContent = String(minutes).padStart(2, '0'); }
-      if (secondsEl) { secondsEl.textContent = String(seconds).padStart(2, '0'); }
+      if (daysEl)    daysEl.textContent    = String(days).padStart(2, '0');
+      if (hoursEl)   hoursEl.textContent   = String(hours).padStart(2, '0');
+      if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+      if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
     };
 
+    // render pertama supaya tidak 00 semua
     tick();
-    const timer = setInterval(tick, 1000);
+    timer = setInterval(tick, 1000);
   }
 
   function initGallery() {
-    if (typeof SimpleLightbox === 'undefined') {
-      return;
-    }
+    if (typeof SimpleLightbox === 'undefined') return;
+
     new SimpleLightbox('.nov-gallery a', {
       disableScroll: true,
       docClose: false,
@@ -208,9 +213,7 @@
   }
 
   function initQrCode() {
-    if (!config.qrcode || typeof $.fn.ClassyQR !== 'function') {
-      return;
-    }
+    if (!config.qrcode || typeof $.fn.ClassyQR !== 'function') return;
 
     $('#qrcode').ClassyQR({
       create: true,
@@ -221,9 +224,7 @@
 
   function initGuestbook() {
     const form = $('#guestbook');
-    if (!form.length) {
-      return;
-    }
+    if (!form.length) return;
 
     form.on('submit', function (event) {
       event.preventDefault();
@@ -233,7 +234,7 @@
       submitBtn.prop('disabled', true);
 
       $.ajax({
-        url: config.baseUrl + '/add_komentar',
+        url: (config.baseUrl || '') + '/add_komentar',
         method: 'POST',
         data: { nama: nama, komentar: komentar },
         dataType: 'html'
@@ -269,9 +270,7 @@
   function initCopyButtons() {
     $(document).on('click', '.nov-copy', function () {
       const account = $(this).data('account');
-      if (!account) {
-        return;
-      }
+      if (!account) return;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(account).then(function () {
@@ -332,9 +331,7 @@
     let activated = false;
 
     const revealCards = function () {
-      if (activated) {
-        return;
-      }
+      if (activated) return;
       activated = true;
 
       cards.forEach(function (card) {
@@ -375,16 +372,19 @@
     });
   }
 
+  // Inisialisasi urut; dibungkus try/catch ringan agar error satu modul
+  // tidak menghentikan modul berikutnya
   $(function () {
     body.classList.add('no-scroll');
-    initOverlay();
-    initMusicControl();
-    formatDates();
-    initCountdown();
-    initGallery();
-    initQrCode();
-    initGuestbook();
-    initCopyButtons();
-    initSlideUp(); 
+
+    try { initOverlay(); } catch (e) { console.error(e); }
+    try { initMusicControl(); } catch (e) { console.error(e); }
+    try { formatDates(); } catch (e) { console.error(e); }
+    try { initCountdown(); } catch (e) { console.error(e); }
+    try { initGallery(); } catch (e) { console.error(e); }
+    try { initQrCode(); } catch (e) { console.error(e); }
+    try { initGuestbook(); } catch (e) { console.error(e); }
+    try { initCopyButtons(); } catch (e) { console.error(e); }
+    try { initSlideUp(); } catch (e) { console.error(e); }
   });
 })(jQuery);

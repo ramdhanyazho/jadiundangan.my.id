@@ -1,47 +1,87 @@
 <?php
 // update baru
 $mempelaiRow = $mempelai->getFirstRow();
-$nama_panggilan_pria = $mempelaiRow->nama_panggilan_pria ?? 'Mempelai Pria';
-$nama_lengkap_pria = $mempelaiRow->nama_pria ?? $nama_panggilan_pria;
-$nama_ayah_pria = $mempelaiRow->nama_ayah_pria ?? '';
-$nama_ibu_pria = $mempelaiRow->nama_ibu_pria ?? '';
-$nama_panggilan_wanita = $mempelaiRow->nama_panggilan_wanita ?? 'Mempelai Wanita';
-$nama_lengkap_wanita = $mempelaiRow->nama_wanita ?? $nama_panggilan_wanita;
-$nama_ayah_wanita = $mempelaiRow->nama_ayah_wanita ?? '';
-$nama_ibu_wanita = $mempelaiRow->nama_ibu_wanita ?? '';
+$nama_panggilan_pria   = $mempelaiRow->nama_panggilan_pria   ?? 'Mempelai Pria';
+$nama_lengkap_pria     = $mempelaiRow->nama_pria              ?? $nama_panggilan_pria;
+$nama_ayah_pria        = $mempelaiRow->nama_ayah_pria         ?? '';
+$nama_ibu_pria         = $mempelaiRow->nama_ibu_pria          ?? '';
+$nama_panggilan_wanita = $mempelaiRow->nama_panggilan_wanita  ?? 'Mempelai Wanita';
+$nama_lengkap_wanita   = $mempelaiRow->nama_wanita            ?? $nama_panggilan_wanita;
+$nama_ayah_wanita      = $mempelaiRow->nama_ayah_wanita       ?? '';
+$nama_ibu_wanita       = $mempelaiRow->nama_ibu_wanita        ?? '';
 
-$ruleSet = $rules->getFirstRow();
-$dataRow = $data->getFirstRow();
-$eventRow = $acara->getFirstRow();
+$ruleSet   = $rules->getFirstRow();
+$dataRow   = $data->getFirstRow();
+$eventRow  = $acara->getFirstRow();
 
 $rekeningList = [];
 if ($rekening && method_exists($rekening, 'getResult')) {
     $rekeningList = $rekening->getResult();
 }
 
-$kunci = $dataRow->kunci ?? '';
-$youtube = $dataRow->video ?? '';
-$salam_pembuka = $dataRow->salam_pembuka ?? '';
-$salam_penutup = $dataRow->salam_wa_bawah ?? '';
-$maps = $dataRow->maps ?? '';
-$musiknya = $kunci !== '' ? '/assets/users/' . $kunci . '/musik.mp3' : '';
+$kunci          = $dataRow->kunci          ?? '';
+$youtube        = $dataRow->video          ?? '';
+$salam_pembuka  = $dataRow->salam_pembuka  ?? '';
+$salam_penutup  = $dataRow->salam_wa_bawah ?? '';
+$maps           = $dataRow->maps           ?? '';
+$musiknya       = $kunci !== '' ? '/assets/users/' . $kunci . '/musik.mp3' : '';
 
-$tanggal_akad = $eventRow->tanggal_akad ?? '';
-$tanggal_resepsi = $eventRow->tanggal_resepsi ?? '';
-$jam_akad = $eventRow->jam_akad ?? '';
-$jam_resepsi = $eventRow->jam_resepsi ?? '';
-$tempat_akad = $eventRow->tempat_akad ?? '';
-$alamat_akad = $eventRow->alamat_akad ?? '';
-$tempat_resepsi = $eventRow->tempat_resepsi ?? '';
-$alamat_resepsi = $eventRow->alamat_resepsi ?? '';
-$countdown = '';
-if (!empty($tanggal_resepsi)) {
-    $countdown = trim($tanggal_resepsi . ' ' . $jam_resepsi);
+$tanggal_akad     = $eventRow->tanggal_akad     ?? '';
+$tanggal_resepsi  = $eventRow->tanggal_resepsi  ?? '';
+$jam_akad         = $eventRow->jam_akad         ?? '';
+$jam_resepsi      = $eventRow->jam_resepsi      ?? '';
+$tempat_akad      = $eventRow->tempat_akad      ?? '';
+$alamat_akad      = $eventRow->alamat_akad      ?? '';
+$tempat_resepsi   = $eventRow->tempat_resepsi   ?? '';
+$alamat_resepsi   = $eventRow->alamat_resepsi   ?? '';
+
+// --- Helper: buat string ISO 8601 yang stabil untuk JS Date() & moment ---
+function make_iso(?string $date, ?string $time = '00:00'): string {
+    $date = trim((string)$date);
+    $time = trim((string)($time ?: '00:00'));
+    if ($date === '') return '';
+
+    // Normalisasi delimiter tanggal: "2022/12/15" -> "2022-12-15"
+    $dateNorm = str_replace('/', '-', $date);
+
+    // Normalisasi jam "13.00" -> "13:00"
+    $timeNorm = str_replace('.', ':', $time);
+
+    $normalized = $dateNorm . ' ' . $timeNorm;
+
+    try {
+        $tz = new DateTimeZone('Asia/Jakarta');
+        // Pakai strtotime dulu (lebih toleran berbagai format)
+        $ts = strtotime($normalized);
+        if ($ts !== false) {
+            $dt = (new DateTimeImmutable('@' . $ts))->setTimezone($tz);
+        } else {
+            // fallback parser DateTime
+            $dt = new DateTimeImmutable($normalized, $tz);
+        }
+        // ISO 8601: 2025-10-18T13:00:00+07:00
+        return $dt->format('Y-m-d\TH:i:sP');
+    } catch (Throwable $e) {
+        return '';
+    }
 }
 
+// Versi ISO untuk dipakai di JS (moment & Date())
+$tanggal_akad_iso       = $tanggal_akad    ? make_iso($tanggal_akad) : '';
+$tanggal_resepsi_iso    = $tanggal_resepsi ? make_iso($tanggal_resepsi) : '';
+$tanggal_pernikahan_iso = $tanggal_resepsi_iso; // tanggal utama
+
+// String countdown (ISO lengkap dgn jam)
+$countdown = '';
+if (!empty($tanggal_resepsi)) {
+    $countdown = make_iso($tanggal_resepsi, $jam_resepsi ?: '00:00');
+}
+
+// Short date untuk badge kecil (tetap tampil seperti sebelumnya)
 $shortDate = '';
 if (!empty($tanggal_resepsi)) {
-    $timestamp = strtotime($tanggal_resepsi);
+    // pakai strtotime – karena hanya untuk display d.m.y
+    $timestamp = strtotime(str_replace('/', '-', $tanggal_resepsi));
     if ($timestamp !== false) {
         $shortDate = date('d.m.y', $timestamp);
     } else {
@@ -49,16 +89,14 @@ if (!empty($tanggal_resepsi)) {
     }
 }
 
-$rawInvite = is_string($invite) ? trim($invite) : '';
-$inviteeName = $rawInvite !== '' ? esc(ucwords($rawInvite)) : 'Tamu Undangan';
+$rawInvite        = is_string($invite) ? trim($invite) : '';
+$inviteeName      = $rawInvite !== '' ? esc(ucwords($rawInvite)) : 'Tamu Undangan';
 $rawInviteAddress = is_string($alamat_tamu) ? trim($alamat_tamu) : '';
-$inviteAddress = $rawInviteAddress !== '' ? esc(ucwords($rawInviteAddress)) : '';
+$inviteAddress    = $rawInviteAddress !== '' ? esc(ucwords($rawInviteAddress)) : '';
 
 function novianty_escape_multiline(?string $text): string
 {
-    if ($text === null) {
-        return '';
-    }
+    if ($text === null) return '';
     return nl2br(esc($text));
 }
 ?>
@@ -494,23 +532,35 @@ function novianty_escape_multiline(?string $text): string
         </div>
     </div>
 
+    <!-- JS vendor (urutannya penting: jQuery -> Bootstrap -> vendor lain -> plugin optional -> theme) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplelightbox/2.14.1/simple-lightbox.min.js"></script>
+
+    <!-- moment + locale id -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/id.min.js"></script>
-    <script src="<?php echo base_url() ?>/assets/themes/novianty/js/jquery.classyqr.js"></script>
-    <script>
-        window.noviantyConfig = {
-            baseUrl: '<?php echo base_url() ?>',
-            tanggalAkad: '<?= esc($tanggal_akad); ?>',
-            tanggalResepsi: '<?= esc($tanggal_resepsi); ?>',
-            tanggalPernikahan: '<?= esc($tanggal_resepsi); ?>',
-            countdown: '<?= esc($countdown); ?>',
-            qrcode: <?= json_encode($qrcode); ?>
-        };
-    </script>
-    <script src="<?php echo base_url() ?>/assets/themes/novianty/js/theme.js?v=1.2.0"></script>
-</body>
 
+    <?php if ($ruleSet && (int)$ruleSet->qrcode === 1): ?>
+      <!-- Load plugin QR hanya saat fitur QR aktif -->
+      <script src="<?= base_url('assets/themes/novianty/js/jquery.classyqr.js') ?>"></script>
+    <?php endif; ?>
+
+    <script>
+      window.noviantyConfig = {
+        baseUrl: '<?= base_url() ?>',
+
+        // KIRIM TANGGAL VERSI ISO (aman untuk Date() & moment)
+        tanggalAkad: '<?= esc($tanggal_akad_iso); ?>',
+        tanggalResepsi: '<?= esc($tanggal_resepsi_iso); ?>',
+        tanggalPernikahan: '<?= esc($tanggal_pernikahan_iso); ?>',
+
+        countdown: '<?= esc($countdown); ?>',
+        qrcode: <?= json_encode($qrcode); ?>
+      };
+    </script>
+
+    <script src="<?= base_url('assets/themes/novianty/js/theme.js?v=1.2.0') ?>"></script>
+</body>
 </html>
