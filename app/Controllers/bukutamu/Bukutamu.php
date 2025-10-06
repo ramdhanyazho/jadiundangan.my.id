@@ -94,10 +94,23 @@ class Bukutamu extends Controller
         foreach ($datanya->getResult() as $row){ 
 	$kunci = $row->kunci;
 	}
-	$image = $_POST['image'];
-    $image = str_replace('data:image/png;base64,','', $image);
-	$image = base64_decode($image);
-	$filename = $qrcode.'.png';
+        $image = $this->request->getPost('image');
+
+        // Normalise base64 image payload from webcam.js which may return
+        // either JPEG or PNG formats depending on browser support.
+        $search = [
+            'data:image/png;base64,',
+            'data:image/jpeg;base64,',
+            'data:image/jpg;base64,',
+        ];
+        $image = str_replace($search, '', (string) $image);
+        $image = str_replace(' ', '+', $image);
+        $image = base64_decode($image);
+        if ($image === false) {
+            echo 'gagal';
+            return;
+        }
+        $filename = $qrcode.'.png';
 	$path = 'assets/users/'.$kunci;
         
         $cek = $this->BukutamuModel->cek_hadir($qrcode);
