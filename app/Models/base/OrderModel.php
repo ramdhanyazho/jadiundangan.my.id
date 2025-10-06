@@ -5,26 +5,26 @@ use CodeIgniter\Model;
 class OrderModel extends Model
 {
 
-	protected $acara,$cerita,$data,$komen,$maps,$mempelai,$order,$rules,$themes,$users,$album;
+    protected $db,$acara,$cerita,$data,$komen,$maps,$mempelai,$order,$rules,$themes,$users,$album;
 
-	public function __construct() {
+    public function __construct() {
 
         parent::__construct();
-        $db      = \Config\Database::connect();
-        $this->acara = $db->table('acara');
-        $this->cerita = $db->table('cerita');
-        $this->data = $db->table('data');
-        $this->komen = $db->table('komen');
-        $this->maps = $db->table('maps');
-        $this->mempelai = $db->table('mempelai');
-        $this->order = $db->table('order');
-        $this->rules = $db->table('rules');
-        $this->themes = $db->table('themes');
-        $this->users = $db->table('users');
-        $this->album = $db->table('album');
-        $this->pembayaran = $db->table('pembayaran');
-        $this->testimoni = $db->table('testimoni');
-        $this->setting = $db->table('setting');
+        $this->db      = \Config\Database::connect();
+        $this->acara = $this->db->table('acara');
+        $this->cerita = $this->db->table('cerita');
+        $this->data = $this->db->table('data');
+        $this->komen = $this->db->table('komen');
+        $this->maps = $this->db->table('maps');
+        $this->mempelai = $this->db->table('mempelai');
+        $this->order = $this->db->table('order');
+        $this->rules = $this->db->table('rules');
+        $this->themes = $this->db->table('themes');
+        $this->users = $this->db->table('users');
+        $this->album = $this->db->table('album');
+        $this->pembayaran = $this->db->table('pembayaran');
+        $this->testimoni = $this->db->table('testimoni');
+        $this->setting = $this->db->table('setting');
     }
 
     //untuk mengecek domain
@@ -75,7 +75,12 @@ class OrderModel extends Model
 
     public function save_user($data){
 
-    	return $this->users->insert($data);
+        $inserted = $this->users->insert($data);
+        if (! $inserted) {
+            return false;
+        }
+
+        return $this->db->insertID();
 
     }
 
