@@ -550,21 +550,20 @@ class Order extends Controller
 	 		'id_unik' => '',
 	 	];
 		
-		//insert dulu data user nya nanti diambil idnya 
-	 	$saveUser = $this->order->save_user($dataUser);
-	 	if(!$saveUser){
-	 		echo "<script>
-					alert('Terjadi Kesalahan! Silahkan coba beberapa saat lagi!');
-					document.location.href='order/any';
-					</script>";
-					exit();
-	 	}
-		
-	 	//global
-	 	$id_user = $this->db->insertID(); //ambil id user
-		$today = date('ym');
-	 	$kode = $today.$id_user.rand(10,99); //dijadikan invoice sekaligus kode unik user. Formatnya ( 2 digit tahun, 2 digit bulan, id user, random 2 angka)
-	 	$this->order->update_kode($kode,$id_user);
+                //insert dulu data user nya dan ambil idnya dari model agar konsisten
+                $id_user = $this->order->save_user($dataUser);
+                if(!$id_user){
+                        echo "<script>
+                                        alert('Terjadi Kesalahan! Silahkan coba beberapa saat lagi!');
+                                        document.location.href='order/any';
+                                        </script>";
+                                        exit();
+                }
+
+                //global
+                $today = date('ym');
+                $kode = $today.$id_user.rand(10,99); //dijadikan invoice sekaligus kode unik user. Formatnya ( 2 digit tahun, 2 digit bulan, id user, random 2 angka)
+                $this->order->update_kode($kode,$id_user);
 
 	 	//mempelai	
 	 	$nama_lengkap_pria = $this->session->get('nama_lengkap_pria');
