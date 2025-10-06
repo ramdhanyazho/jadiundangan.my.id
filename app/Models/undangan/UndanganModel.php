@@ -5,13 +5,15 @@ use CodeIgniter\Model;
 class UndanganModel extends Model
 {
     //mendefinisikan variable agar bisa digunakan
-	//secara global
+    //secara global
+    protected $db;
     protected $acara,$cerita,$data,$komen,$mempelai,$order,$rules,$themes,$users,$album;
 
     public function __construct() {
 
         parent::__construct();
         $db      = \Config\Database::connect();
+        $this->db = $db;
 
         //mengisi variable global dengan data
         //untuk meload tabel
@@ -44,13 +46,46 @@ class UndanganModel extends Model
     {
         return $this->order->where('domain', $domain)->get();
     }
-    public function get_tamu($id){
-        return $this->tamu->where('id_tamu', $id)->get();
-    }
-    public function cek_tamu($id_user, $id_tamu)
+    protected function applyTamuIdentifier($builder, $identifier)
     {
-    $where = "id_tamu = ".$id_tamu." AND id_user=".$id_user;
-        return $this->tamu->where($where)->get();
+        $identifier = (string) $identifier;
+
+        $conditions = [
+            ['nama_slug', $identifier],
+            ['alamat_slug', $identifier],
+            ['qrcode', $identifier],
+        ];
+
+        if (ctype_digit($identifier)) {
+            array_unshift($conditions, ['id_tamu', (int) $identifier]);
+        }
+
+        $first = array_shift($conditions);
+
+        $builder->groupStart();
+        $builder->where($first[0], $first[1]);
+
+        foreach ($conditions as $condition) {
+            $builder->orWhere($condition[0], $condition[1]);
+        }
+
+        $builder->groupEnd();
+    }
+
+    public function get_tamu($identifier){
+        $builder = $this->db->table('tamu');
+        $this->applyTamuIdentifier($builder, $identifier);
+
+        return $builder->get();
+    }
+
+    public function cek_tamu($id_user, $identifier)
+    {
+        $builder = $this->db->table('tamu');
+        $builder->where('id_user', $id_user);
+        $this->applyTamuIdentifier($builder, $identifier);
+
+        return $builder->get();
     }
 
     //mengambil data mempelai sesuai dengan data(id_user) yang dikirim
